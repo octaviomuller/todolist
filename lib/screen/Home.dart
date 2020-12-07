@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:todo/model/Todo.dart';
+import 'package:todo/services/CloudFirestore.dart';
 import 'package:todo/widget/TodoList.dart';
 
 class Home extends StatefulWidget {
@@ -31,11 +33,27 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    Stream todos = CloudFirestoreService().listenDocuments('todos');
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: TodoList(todoList),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: todos,
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.hasError) {
+            return Text('Something went wrong');
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Text("Loading");
+          }
+          return TodoList(snapshot.data.docs.map((DocumentSnapshot document) =>
+              Todo(document.data()['name'], document.data()['priority'],
+                  document.data()['done'])));
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => {
           initiateDialog(),
